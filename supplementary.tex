@@ -7,7 +7,7 @@
 \usepackage{cite,xcolor,microtype}
 \usepackage{xr-hyper}
 \usepackage[hidelinks]{hyperref}
-\usepackage{stfloats,placeins}
+\usepackage{stfloats,placeins,flushend}
 \newcommand{\method}{\textsc{MAGIC}}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\PP}{\mathbb{P}}
@@ -43,120 +43,15 @@
 \renewcommand{\thefigure}{S\arabic{figure}}
 \renewcommand{\theequation}{S\arabic{equation}}
 \begin{document}
-\title{MAGIC: Supplementary Material}
+\title{Supplementary Material for MAGIC: Adaptive Joint Calibration for Utility-Guided Gold Verification in Crowdsourcing}
 \author{}\date{}\maketitle
-\section{Implementation and Reproducibility Details}
-\label{app:implementation}
-\subsection{Prediction Interfaces and Paid Training}
-The experiments use the saved prediction arrays in the main release. Each array contains a full-pool probability matrix, fixed labels, stable task identifiers, rewards, prices, loss rows, and public annotation summaries. Reference labels are stored separately. These outputs allow MAGIC to be rerun directly.
+Sections~\ref{app:model} and~\ref{app:implementation} give derivations, default parameters, dataset provenance, and implementation details. Tables~\ref{tab:complete1} and~\ref{tab:complete2} report all 195 dataset--baseline gains. Sections~\ref{app:accounting} and~\ref{app:supporting} describe delivery diagnostics and supporting experiments.
+\section{Model Details and Theoretical Examples}\label{app:model}
+\subsection{Notation and Default Settings}
 
-Our LAGNN adaptation uses the authors' public implementation, released as the CrowdGNN repository. It uses the first ten tasks as paid training labels and constructs a graph from annotation agreement. Those labels have already influenced its predictions. They consume the same monetary budget and are never queried again or inserted into MAGIC's calibration history. Our TLLC adaptation uses annotation-derived features and sampled training pairs; pair sampling is part of upstream training, not a reduction of MAGIC's task pool. Both adaptations use the annotations available in the study. MACE and GLAD use the authors' publicly released Python implementations; BCC and TIN retain the behavior of their released implementations. LA\_onepass and LA\_twopass preserve their hard-label outputs, with a one-coin confidence adapter based on worker abilities. All utility calculations use the recorded fixed label even when it differs from the probability-vector maximizer.
+Table~\ref{tab:notation} lists the symbols used across the model and the experiments.
 
-\subsection{Dataset Statistics}
-Table~\ref{tab:datastats} complements Table~\ref{main-tab:datasets} with worker and annotation counts and the utilities behind the relative gains. Reference utility is the mean per-task net utility of calibrated selective delivery without additional verification, so net utility equals reference utility plus utility gain; relative gain is reported only when the reference utility is positive.
-
-\begin{table*}[t]
-\caption{Dataset statistics and MAGIC utilities averaged over 13 baselines and three economic settings. Annotations per task divides the annotation count by $n$. Utilities are per task, and reference utility is net utility minus the utility gain in Table~\ref{main-tab:datasets}. ``--'' indicates a nonpositive mean reference utility.}
-\label{tab:datastats}\centering\smalltable
-\begin{tabular}{lrrrrrrrr}
-\toprule
-Dataset & $n$ & $C$ & Workers & Annotations & Annotations/task & Reference utility & Net utility & Gain (\%) \\
-\midrule
-Bird & 108 & 2 & 39 & 4212 & 39.00 & 2.6302 & 2.6149 & -0.58\% \\
-CF & 300 & 5 & 461 & 1720 & 5.73 & 2.3698 & 2.8497 & 20.25\% \\
-CF\_ & 300 & 5 & 110 & 6025 & 20.08 & 2.2388 & 2.3821 & 6.40\% \\
-Face & 584 & 4 & 27 & 5242 & 8.98 & -0.1900 & 0.0601 & -- \\
-Senti & 1000 & 5 & 917 & 5503 & 5.50 & 2.5578 & 3.1434 & 22.89\% \\
-UC & 100 & 2 & 150 & 2297 & 22.97 & 0.7551 & 0.7551 & 0.00\% \\
-Web & 2653 & 5 & 176 & 15539 & 5.86 & 1.9503 & 2.8440 & 45.83\% \\
-ZenCrowd\_all & 2040 & 2 & 78 & 20125 & 9.87 & 2.7161 & 2.8534 & 5.06\% \\
-ZenCrowd\_in & 2040 & 2 & 25 & 10495 & 5.14 & 1.8502 & 2.0289 & 9.66\% \\
-ZenCrowd\_us & 2040 & 2 & 74 & 11155 & 5.47 & 2.6116 & 2.9344 & 12.36\% \\
-aircrowd6 & 478 & 6 & 50 & 1473 & 3.08 & 1.9796 & 2.3464 & 18.53\% \\
-fej2013 & 576 & 3 & 48 & 2902 & 5.04 & 2.7051 & 3.3448 & 23.65\% \\
-product & 8315 & 2 & 176 & 24945 & 3.00 & 3.3807 & 3.8376 & 13.51\% \\
-valence5 & 100 & 5 & 38 & 1000 & 10.00 & -2.9908 & -2.4307 & -- \\
-valence7 & 100 & 7 & 38 & 1000 & 10.00 & -4.2737 & -0.6231 & -- \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-\subsection{Economic Settings for the Real Pools}
-\label{app:economics}
-Each economic seed $s\in\{20261401,20261402,20261403\}$ generates task payoffs deterministically from a SHA-256 hash of the seed, dataset, task identifier, and quantity, so all baselines share identical economics. A public difficulty score $d_i\in[0,1]$ averages normalized vote entropy, one minus the top-two vote margin, and the entropy of reliability-weighted votes, where worker reliability is leave-one-out plurality agreement shrunk toward the global rate with strength 10; reference labels are not used. With $\mathrm{LN}(m,v)$ denoting a log-normal variable with mean $m$ and coefficient of variation $v$, rewards and gold prices are
-\begin{equation}
- r_i=\mathrm{LN}(5,0.1)\,(1+0.5d_i),\qquad c_i=\mathrm{LN}(10,0.1)\,(1+0.5d_i).
-\end{equation}
-For every incorrect pair $(a,y)$ with $y\ne a$, a loss tier is drawn with probabilities 0.6, 0.3, and 0.1 for means 5, 10, and 100, and $L_i(a,y)=\mathrm{LN}(\text{tier mean},0.1)\,(1+d_i)$. Losses therefore depend on the incorrect class, and about one tenth of incorrect pairs carry a high penalty. Because $r_i$ and $c_i$ share the difficulty factor, $c_i/r_i$ does not depend on difficulty. Across all pools and seeds, rewards range from 3.40 to 10.25, prices from 6.61 to 22.11, $c_i/r_i$ from 1.10 to 3.60 with median 2.00, and wrong-label losses from 3.26 to 267.45 with mean 22.88. The budget is $30$ times the median price of the complete pool.
-
-
-\subsection{Zero-Variance Handling for BWA/UC}
-For UC, the supplied BWA code has both zero variance parameter and zero initial worker error. Its worker-precision update therefore divides by zero. The explicit extension is restricted to binary inputs where every task's annotations are unanimous. Under a common positive denominator floor tending to zero, worker precisions diverge while the finite global prior becomes negligible; each task converges to its unanimous label. The extension returns that label and its one-hot probability vector. It uses annotation agreement, not reference correctness, to identify the boundary.
-
-The release checks floors $10^{-3},10^{-6},10^{-9},10^{-12}$ and unchanged nondegenerate outputs on Bird, CF, and Senti. The three BWA/UC main runs complete under this extension. Table~\ref{tab:bwa} shows all auxiliary settings on this same combination. Some settings deteriorate despite zero query count because they change pre-query delivery.
-
-\begin{table}[t]
-\caption{BWA on UC, averaged over three economics. Gain uses the corresponding common no-additional-query reference. Queries are actual purchases, with fractional values arising only from averaging.}
-\label{tab:bwa}\centering\smalltable
-\begin{tabular}{lrrr}
-\toprule
-Setting & Utility gain & Net utility & Queries \\
-\midrule
-Compulsory delivery & -1.3543 & -0.2852 & 3.67 \\
-$\gamma=0.10$ & -0.8604 & 0.2088 & 0.33 \\
-$\gamma=0.50$ & 0.0533 & 1.1224 & 2.00 \\
-$B=15\tilde c$ & 0.0000 & 1.0692 & 0.00 \\
-$B=60\tilde c$ & 0.0000 & 1.0692 & 0.00 \\
-MAGIC & 0.0000 & 1.0692 & 0.00 \\
-Global sharing & -1.6086 & -0.5395 & 2.67 \\
-$\alpha=0.25$ & -0.0254 & 1.0437 & 0.67 \\
-$\alpha=0.75$ & 0.0000 & 1.0692 & 0.00 \\
-Direct-only queries & 0.0000 & 1.0692 & 0.00 \\
-w/o broad hypotheses & -2.1028 & -1.0337 & 0.00 \\
-Budget exhaustion & -1.4649 & -0.3957 & 32.00 \\
-$\beta=0.25$ & 0.0000 & 1.0692 & 0.00 \\
-$\beta=0.75$ & 0.0000 & 1.0692 & 0.00 \\
-$c\times0.5$ & 0.0444 & 1.1135 & 4.33 \\
-$c\times2$ & 0.0000 & 1.0692 & 0.00 \\
-$\alpha=0$ & -1.4452 & -0.3760 & 3.33 \\
-$\gamma=0.125$ & -0.5884 & 0.4808 & 0.33 \\
-$\gamma=0.375$ & 0.0000 & 1.0692 & 0.00 \\
-$\gamma=0.625$ & -0.0239 & 1.0453 & 2.67 \\
-$\gamma=0.75$ & -0.5128 & 0.5563 & 3.33 \\
-$\gamma=0.875$ & -0.6167 & 0.4524 & 3.00 \\
-$\gamma=1$ & -0.8160 & 0.2532 & 3.00 \\
-$\alpha=0.125$ & -0.8165 & 0.2526 & 3.00 \\
-$\alpha=0.375$ & 0.0000 & 1.0692 & 0.00 \\
-$\alpha=0.625$ & 0.0000 & 1.0692 & 0.00 \\
-$\alpha=0.875$ & 0.0000 & 1.0692 & 0.00 \\
-$\alpha=1$ & 0.0000 & 1.0692 & 0.00 \\
-$\beta=0$ & 0.0000 & 1.0692 & 0.00 \\
-$\beta=0.125$ & 0.0000 & 1.0692 & 0.00 \\
-$\beta=0.375$ & 0.0000 & 1.0692 & 0.00 \\
-$\beta=0.625$ & 0.0000 & 1.0692 & 0.00 \\
-$\beta=0.875$ & 0.0000 & 1.0692 & 0.00 \\
-$\beta=1$ & -0.0088 & 1.0603 & 0.33 \\
-\bottomrule
-\end{tabular}
-
-\end{table}
-
-\subsection{Numerical Evaluation and Trace Reuse}
-The initial main implementation uses the dense backend when its cross-moment tensor fits in 3~GiB and the blocked backend otherwise; the blocked backend scores groups of 128 candidates, and candidates in the same leaf with identical hypothesis distributions share their moment rows and are evaluated once. The auxiliary implementation uses exact rectangular moments, candidate blocks of 512, and a cache threshold of 256 tasks for small subtrees. These numbers control working storage and cache reuse. None truncates the task pool, the feasible candidate set, or the observable context tree. Binary hypotheses that differ only in their residual allocation define identical distributions and can be combined by summing prior masses. This optional exact simplification was checked separately; the retained experiment runs preserve the original hypothesis ordering.
-
-Two settings admit exact prefix reuse. Removing the stop gate preserves every previously selected positive-gain purchase before continuing. Under a reduced budget, if the original maximizer remains affordable, it is still a maximizer over the smaller feasible set. Reuse ends when that condition fails, and all feasible scores are recomputed. If the original stop condition has been reached, restricting the feasible set cannot introduce a positive score. Replayed prefixes still invoke the paid oracle, deduct costs, and update evidence. Twenty-six trajectories were checked against complete rescoring with identical query sequences and final delivery.
-
-The verification records include 25 default trajectory replays in the auxiliary implementation and all auxiliary settings replayed on the full 8,315-task product/TLLC input for the first economic seed. Dense and blocked moments are compared across all auxiliary settings; separate numerical checks test evidence and cross moments. These tests address mathematical and implementation equivalence. The audit additionally checks every configuration, input hash, and paid-query trace. For binary outcomes, the extension recovers the second cross moment from $J_{ji}(1)=\mu_i-J_{ji}(0)$ to reduce repeated computation. Scores near ties or the stopping threshold use the original evaluation. State checks and complete trajectory comparisons verify the equivalence. Multiclass pools use FP64 GPU cross moments. Each of two storage implementations passes nine state checks and four complete trajectory comparisons, supplemented by full traces on five further pools, preserving query and delivery decisions. The comprehensive audit recomputes realized utility, accounting identities, paid-label access, uniqueness of queries, and budget feasibility for all 19,890 reported rows. The 2,334 files in the main-release checksum list remain unchanged, and rerunning the main configuration within the supporting framework reproduces the original query sequences and deliveries.
-
-\section{Model Construction and Conditional Evaluation}
-
-\label{app:model}
-
-\subsection{Notation}
-
-Table~\ref{tab:notation} summarizes the main notation of the main text.
-
-\begin{table}[t]
+\begin{table}[!ht]
 \caption{Main notation. Default hyperparameter values are listed in Table~\ref{tab:settings}.}
 \label{tab:notation}\centering\smalltable
 \begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.68\columnwidth}@{}}
@@ -212,7 +107,7 @@ $\kappa$ & Confidence clipping & $10^{-6}$ \\
 $\mathcal{G}_t$ & Calibration slopes & $\{0.5,1,2\}$ \\
 $\mathcal{G}_b$ & Calibration offsets & $\{-4,-2,0,2,4\}$ \\
 $\lambda_t,\lambda_b$ & Slope and offset regularization & $1/2,\ 1/8$ \\
-$\mathcal{P}$ & Constant correctness probabilities & $\{0.05,0.1,0.2,\ldots,0.9,0.95\}$ \\
+$\mathcal{P}$ & Constant correctness probabilities & $\{.05,.1,.2,\ldots,.9,.95\}$ \\
 $\eta$ & Upstream-residual mass & $0.75$ \\
 $\gamma$ & Confidence-independent family mass & $0.25$ \\
 $K$ & Number of hypotheses & $52$ \\
@@ -223,28 +118,112 @@ $\beta$ & Pooled mass at internal nodes & $0.5$ \\
 \end{tabular}
 \end{table}
 
-\subsection{Residual Probabilities}
-For a fixed-label correctness probability $p_{hi}(a_i)$, the upstream-residual hypothesis distributes $1-p_{hi}(a_i)$ over $y\ne a_i$ proportionally to $q_i(y)$; the uniform-residual hypothesis uses $(1-p_{hi}(a_i))/(C-1)$. Degenerate residual mass is handled by a uniform residual. The family weights are normalized before use. A broad constant-correctness hypothesis still allows a task-specific distribution over incorrect classes through the upstream residual; ``constant'' refers only to the probability of the fixed label being correct.
-
-Public rank transformations and tree construction precede purchases. Consequently, selecting a task does not change the context partition. The posterior can nevertheless change the relative weight assigned to pooled and split explanations. In an unsplittable nonsingleton, the alternative to pooling is independent mixing at individual tasks. This avoids manufacturing context distinctions from task order.
+\subsection{Degenerate Inputs}
+If $\sum_{y\ne a_i}q_i(y)=0$, use a uniform residual distribution. A confidence-independent hypothesis fixes the probability of the predicted label but can still assign task-specific probabilities to other classes. When a nonsingleton tree node contains identical public features, its split alternative assigns independent marginals to its tasks.
 
 \subsection{Evidence under Adaptive Purchases}
 Let $H_t$ denote a particular observed history and $\varphi_t(j\mid H_t)$ the action probability under the policy. The likelihood of the history contains products of label likelihoods and action probabilities. Given the same realized history and public inputs, the action factors do not depend on the latent calibration hypothesis. They cancel in Bayes' rule. For a deterministic policy they equal one along the reached path. The conditioning argument assumes that task selection uses public inputs and previously purchased labels.
 
-For a split node, child evidence factors because its child laws are independent conditional on that split. For a pooled node, observations update the shared hypothesis weights. The mixture evidence then normalizes both explanations. At the outer independent branch, observing task $j$ leaves the remaining task marginals unchanged within that branch, while the branch's posterior mass can change. Thus, the full model can transfer information both through a shared hypothesis and through evidence about the degree of sharing itself.
+\subsection{Diagonal Terms in Moment Computation}
+For $i=j$, the exact cross moment is $p_j(y)U_j(y)$ because the outcome fixes the utility. The factorization for distinct tasks does not apply on this diagonal. Equation~\eqref{main-eq:computable} excludes it and credits $r_j-c_j$ separately.
 
-\subsection{Why Exact Cross Moments Are Sufficient}
-The terminal decision is separable over remaining tasks. For an outcome with positive probability, its conditional mean utility is the cross moment divided by that outcome probability. Positive homogeneity of $[\cdot]_+$ eliminates this denominator in the expectation. An outcome with zero probability has zero cross moment and contributes zero. This proves that the acquisition identity remains well-defined without explicit division by tiny outcome probabilities.
+\subsection{Decision Margins and Tightness}\label{app:example}
+Consider two equally likely outcomes of query $j$ and two remaining tasks. The first task has conditional mean utilities $-0.5$ and $1.5$, and the second has $1$ and $3$. Both conditional means move by one unit around their respective prior means, giving the same covariance-based bound $D=0.5$. For the first task the margin is $m=0.5$, and rejecting after the first outcome saves $0.5$ with probability one half. For the second, $m=2$ and both outcomes preserve delivery. Equation~\eqref{main-eq:bound} gives the exact transfers, $0.25$ and zero.
 
-The diagonal must be treated separately. For example, $\E[\ind\{Y_j=y\}U_j(Y_j)]=p_j(y)U_j(y)$, whereas multiplying hypothesis-wise marginal means generally yields a different expression. MAGIC removes the queried task from terminal delivery and accounts for it by $r_j-c_j$. This is why only off-diagonal moments appear in the acquisition sum.
+More generally, equality in the margin bound holds for any finite outcome support if $m=0$ or $A\le m$. For $0<m<A$, it holds exactly when every positive movement $z_y$ on the support equals $A$: for $0<z<A$, $(z-m)_+< z(1-m/A)$. Thus a two-point movement distribution attains the bound regardless of the outcome probabilities.
 
-The finite probabilistic model permits exact evaluation of the one-step objective without Monte Carlo sampling. The expected-return theorem requires correct conditional expectations at reached histories, including conditioning on the information already embedded in baseline predictions.
+\section{Implementation and Reproducibility Details}
+\label{app:implementation}
+\subsection{Prediction Interfaces and Paid Training}
+The experiments use the saved prediction arrays in the main release. Each array contains a full-pool probability matrix, fixed labels, stable task identifiers, rewards, prices, loss rows, and public annotation summaries. Reference labels are stored separately. These outputs allow MAGIC to be rerun directly.
+
+Our LAGNN adaptation uses the authors' public implementation, released as the CrowdGNN repository. It uses the first ten tasks as paid training labels and constructs a graph from annotation agreement. Those labels have already influenced its predictions. They consume the same monetary budget and are never queried again or inserted into MAGIC's calibration history. Our TLLC adaptation uses annotation-derived features and sampled training pairs; pair sampling is part of upstream training, not a reduction of MAGIC's task pool. Both adaptations use the annotations available in the study. MACE and GLAD use the authors' publicly released Python implementations; BCC and TIN retain the behavior of their released implementations. LA\_onepass and LA\_twopass preserve their hard-label outputs, with a one-coin confidence adapter based on worker abilities. All utility calculations use the recorded fixed label even when it differs from the probability-vector maximizer.
+
+\subsection{Dataset Provenance and Coverage}\label{app:data}
+Sources for Bird and Web are~\cite{welinder2010multidimensional} and~\cite{zhou2012learning}, respectively. The CF pools are described in~\cite{venanzi2014community,venanzi2015activecrowdtoolkit}, Senti and fej2013 in~\cite{josephy2014workshops}, and the three ZenCrowd pools in~\cite{demartini2012zencrowd}. Sources for Face and product are~\cite{mozafari2014scaling,wang2012crowder,zheng2017truth}. UC is from~\cite{wu2023crowdsourcing}. The multiclass and affective pools (aircrowd6, valence5, and valence7) are described in~\cite{zhang2016multiclass,snow2008cheap}. Table~\ref{tab:datastats} gives annotation density and the underlying utility levels. Relative gain is defined for positive mean reference utility.
+
+\begin{table*}[t]
+\caption{Dataset statistics and MAGIC utilities averaged over 13 baselines and three economic settings. Annotations per task divides the annotation count by $n$. Utilities are per task, and reference utility is net utility minus the utility gain in Table~\ref{main-tab:datasets}. ``--'' indicates a nonpositive mean reference utility.}
+\label{tab:datastats}\centering\smalltable
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Dataset & $n$ & $C$ & Workers & Annotations & Annotations/task & Reference utility & Net utility & Gain (\%) \\
+\midrule
+Bird & 108 & 2 & 39 & 4212 & 39.00 & 2.6302 & 2.6149 & -0.58\% \\
+CF & 300 & 5 & 461 & 1720 & 5.73 & 2.3698 & 2.8497 & 20.25\% \\
+CF\_ & 300 & 5 & 110 & 6025 & 20.08 & 2.2388 & 2.3821 & 6.40\% \\
+Face & 584 & 4 & 27 & 5242 & 8.98 & -0.1900 & 0.0601 & -- \\
+Senti & 1000 & 5 & 917 & 5503 & 5.50 & 2.5578 & 3.1434 & 22.89\% \\
+UC & 100 & 2 & 150 & 2297 & 22.97 & 0.7551 & 0.7551 & 0.00\% \\
+Web & 2653 & 5 & 176 & 15539 & 5.86 & 1.9503 & 2.8440 & 45.83\% \\
+ZenCrowd\_all & 2040 & 2 & 78 & 20125 & 9.87 & 2.7161 & 2.8534 & 5.06\% \\
+ZenCrowd\_in & 2040 & 2 & 25 & 10495 & 5.14 & 1.8502 & 2.0289 & 9.66\% \\
+ZenCrowd\_us & 2040 & 2 & 74 & 11155 & 5.47 & 2.6116 & 2.9344 & 12.36\% \\
+aircrowd6 & 478 & 6 & 50 & 1473 & 3.08 & 1.9796 & 2.3464 & 18.53\% \\
+fej2013 & 576 & 3 & 48 & 2902 & 5.04 & 2.7051 & 3.3448 & 23.65\% \\
+product & 8315 & 2 & 176 & 24945 & 3.00 & 3.3807 & 3.8376 & 13.51\% \\
+valence5 & 100 & 5 & 38 & 1000 & 10.00 & -2.9908 & -2.4307 & -- \\
+valence7 & 100 & 7 & 38 & 1000 & 10.00 & -4.2737 & -0.6231 & -- \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Economic Settings for the Real Pools}
+\label{app:economics}
+Each economic seed $s\in\{20261401,20261402,20261403\}$ generates task payoffs deterministically from a SHA-256 hash of the seed, dataset, task identifier, and quantity, so all baselines share identical economics. A public difficulty score $d_i\in[0,1]$ averages normalized vote entropy, one minus the top-two vote margin, and the entropy of reliability-weighted votes, where worker reliability is leave-one-out plurality agreement shrunk toward the global rate with strength 10; reference labels are not used. With $\mathrm{LN}(m,v)$ denoting a log-normal variable with mean $m$ and coefficient of variation $v$, rewards and gold prices are
+\begin{equation}
+ r_i=\mathrm{LN}(5,0.1)\,(1+0.5d_i),\qquad c_i=\mathrm{LN}(10,0.1)\,(1+0.5d_i).
+\end{equation}
+For every incorrect pair $(a,y)$ with $y\ne a$, a loss tier is drawn with probabilities 0.6, 0.3, and 0.1 for means 5, 10, and 100, and $L_i(a,y)=\mathrm{LN}(\text{tier mean},0.1)\,(1+d_i)$. Losses therefore depend on the incorrect class, and about one tenth of incorrect pairs carry a high penalty. Because $r_i$ and $c_i$ share the difficulty factor, $c_i/r_i$ does not depend on difficulty. Across all pools and seeds, rewards range from 3.40 to 10.25, prices from 6.61 to 22.11, $c_i/r_i$ from 1.10 to 3.60 with median 2.00, and wrong-label losses from 3.26 to 267.45 with mean 22.88. The budget is $30$ times the median price of the complete pool.
+
+
+\subsection{Zero-Variance Handling for BWA/UC}
+For UC, the supplied BWA code has both zero variance parameter and zero initial worker error. Its worker-precision update therefore divides by zero. The explicit extension is restricted to binary inputs where every task's annotations are unanimous. Under a common positive denominator floor tending to zero, worker precisions diverge while the finite global prior becomes negligible; each task converges to its unanimous label. The extension returns that label and its one-hot probability vector. It uses annotation agreement, not reference correctness, to identify the boundary.
+
+The release checks floors $10^{-3},10^{-6},10^{-9},10^{-12}$ and unchanged nondegenerate outputs on Bird, CF, and Senti. The three BWA/UC main runs complete under this extension. Table~\ref{tab:bwa} groups settings with identical default outputs. This group comprises MAGIC, direct-only queries, both budget changes, doubled prices, $\gamma=0.375$, $\alpha\in\{0.375,0.625,0.75,0.875,1\}$, and every tested $\beta<1$. Removing the broad hypotheses changes the initial delivery even with zero purchases.
+
+\begin{table}[t]
+\caption{BWA on UC, averaged over the three economic settings. Gain uses the corresponding common no-additional-query reference. Queries are actual purchases, with fractional values arising only from averaging.}
+\label{tab:bwa}\centering\smalltable
+\begin{tabular}{lrrr}
+\toprule
+Setting & Utility gain & Net utility & Queries \\
+\midrule
+Default group & 0.0000 & 1.0692 & 0.00 \\
+\midrule
+Compulsory delivery & -1.3543 & -0.2852 & 3.67 \\
+Global sharing & -1.6086 & -0.5395 & 2.67 \\
+w/o broad hypotheses & -2.1028 & -1.0337 & 0.00 \\
+Budget exhaustion & -1.4649 & -0.3957 & 32.00 \\
+$c\times0.5$ & 0.0444 & 1.1135 & 4.33 \\
+$\gamma=0.10$ & -0.8604 & 0.2088 & 0.33 \\
+$\gamma=0.125$ & -0.5884 & 0.4808 & 0.33 \\
+$\gamma=0.50$ & 0.0533 & 1.1224 & 2.00 \\
+$\gamma=0.625$ & -0.0239 & 1.0453 & 2.67 \\
+$\gamma=0.75$ & -0.5128 & 0.5563 & 3.33 \\
+$\gamma=0.875$ & -0.6167 & 0.4524 & 3.00 \\
+$\gamma=1$ & -0.8160 & 0.2532 & 3.00 \\
+$\alpha=0$ & -1.4452 & -0.3760 & 3.33 \\
+$\alpha=0.125$ & -0.8165 & 0.2526 & 3.00 \\
+$\alpha=0.25$ & -0.0254 & 1.0437 & 0.67 \\
+$\beta=1$ & -0.0088 & 1.0603 & 0.33 \\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\subsection{Numerical Evaluation and Trace Reuse}
+The initial main implementation uses the dense backend when its cross-moment tensor fits in 3~GiB and the blocked backend otherwise; the blocked backend scores groups of 128 candidates, and candidates in the same leaf with identical hypothesis distributions share their moment rows and are evaluated once. The auxiliary implementation uses exact rectangular moments, candidate blocks of 512, and a cache threshold of 256 tasks for small subtrees. These numbers control working storage and cache reuse. None truncates the task pool, the feasible candidate set, or the observable context tree. Binary hypotheses that differ only in their residual allocation define identical distributions and can be combined by summing prior masses. This optional exact simplification was checked separately; the retained experiment runs preserve the original hypothesis ordering.
+
+Two settings admit exact prefix reuse. Removing the stop gate preserves every previously selected positive-gain purchase before continuing. Under a reduced budget, if the original maximizer remains affordable, it is still a maximizer over the smaller feasible set. Reuse ends when that condition fails, and all feasible scores are recomputed. If the original stop condition has been reached, restricting the feasible set cannot introduce a positive score. Replayed prefixes still invoke the paid oracle, deduct costs, and update evidence. Twenty-six trajectories were checked against complete rescoring with identical query sequences and final delivery.
+
+The verification records include 25 default trajectory replays in the auxiliary implementation and all auxiliary settings replayed on the full 8,315-task product/TLLC input for the first economic seed. Dense and blocked moments are compared across all auxiliary settings; separate numerical checks test evidence and cross moments. These tests address mathematical and implementation equivalence. The audit additionally checks every configuration, input hash, and paid-query trace. For binary outcomes, the extension recovers the second cross moment from $J_{ji}(1)=\mu_i-J_{ji}(0)$ to reduce repeated computation. Scores near ties or the stopping threshold use the original evaluation. State checks and complete trajectory comparisons verify the equivalence. Multiclass pools use FP64 GPU cross moments. Each of two storage implementations passes nine state checks and four complete trajectory comparisons, supplemented by full traces on five further pools, preserving query and delivery decisions. The comprehensive audit recomputes realized utility, accounting identities, paid-label access, uniqueness of queries, and budget feasibility for all 19,890 reported rows. The 2,334 files in the main-release checksum list remain unchanged, and rerunning the main configuration within the supporting framework reproduces the original query sequences and deliveries.
 
 \section{Ablation Definitions and Comparison References}
 \label{app:ablations}
 Global-pool-only replaces the entire hierarchy and outer independent mixture with one shared calibrator. No-broad removes the 22 confidence-independent hypotheses and renormalizes the remaining 30. Direct-only acquisition replaces the score by $r_j-c_j-[\mu_j]_+$; purchased labels would still update the joint posterior if a query were made. No-stop retains full gain ranking but continues while any task is affordable, regardless of the sign of its score. Compulsory delivery replaces both lookahead terminal utility and final delivery with delivery of all remaining fixed labels, producing score $r_j-c_j-\mu_j$.
 
-The global-pool control changes more than one structural component, and compulsory delivery changes acquisition as well as final decisions. Each comparison measures the corresponding joint intervention. Similarly, changing $\gamma$ can alter initial marginals, unlike changing $\alpha$ or $\beta$.
+The global-pool control replaces both levels of structural mixing. Compulsory delivery changes the acquisition objective and the terminal action together.
 
 Let $N_v$ be variant $v$'s final net utility, $N_0$ the common default-prior no-query reference, and $N_{v,0}$ the variant's own no-query value. Then
 \begin{equation}
@@ -292,22 +271,13 @@ $\beta=1$ & -0.0643 & [-0.1743, 0.0387] & 60/1/134 & 0.0018 \\
 
 \end{table}
 
-\begin{table*}[t]
-\caption{All paired comparisons, extending Table~\ref{main-tab:comparisons} with rules run until budget exhaustion. Difference is final net utility minus MAGIC per task; W/T/L counts combinations where the variant is better, tied, or worse. Holm correction applies within each block.}
-\label{tab:paired}\centering\smalltable\setlength{\tabcolsep}{2.5pt}
+\begin{table}[t]
+\caption{Acquisition rules run to budget exhaustion. Differences are final net utility per task relative to MAGIC. W/T/L counts wins, ties, and losses across 195 combinations. Intervals use the cluster bootstrap and $p$-values use within-family Holm correction.}
+\label{tab:paired}\centering\smalltable\setlength{\tabcolsep}{2pt}
 \begin{tabular}{lrrrr}
 \toprule
 Comparison & Difference & 95\% CI & W/T/L & Holm $p$ \\
 \midrule
-\multicolumn{5}{l}{\emph{Acquisition rules, matched queries}} \\
-Decision boundary & 0.0075 & [-0.0623, 0.0952] & 72/18/105 & 0.8809 \\
-Random & -0.0940 & [-0.1392, -0.0466] & 53/18/124 & 0.0273 \\
-Cost-normalized unc. & -0.3697 & [-0.6385, -0.1672] & 40/18/137 & 0.0273 \\
-Vote disagreement & -0.4140 & [-0.5984, -0.2179] & 35/20/140 & 0.0273 \\
-Margin & -0.4464 & [-0.6544, -0.2643] & 37/18/140 & 0.0273 \\
-Least confidence & -0.4506 & [-0.6448, -0.2692] & 36/18/141 & 0.0273 \\
-Entropy & -0.4577 & [-0.7024, -0.2537] & 38/18/139 & 0.0273 \\
-\multicolumn{5}{l}{\emph{Acquisition rules, budget exhaustion}} \\
 Decision boundary & -0.2464 & [-0.5594, -0.0160] & 61/0/134 & 0.0996 \\
 Random & -0.4260 & [-0.8287, -0.1477] & 38/0/157 & 0.0117 \\
 Cost-normalized unc. & -0.6266 & [-0.9609, -0.3393] & 32/0/163 & 0.0117 \\
@@ -315,23 +285,10 @@ Vote disagreement & -0.6371 & [-0.9342, -0.3853] & 31/0/164 & 0.0117 \\
 Least confidence & -0.7317 & [-1.0554, -0.4545] & 29/0/166 & 0.0117 \\
 Margin & -0.7164 & [-1.0401, -0.4418] & 28/0/167 & 0.0068 \\
 Entropy & -0.7000 & [-1.0215, -0.4225] & 29/0/166 & 0.0117 \\
-\multicolumn{5}{l}{\emph{Component ablations}} \\
-Budget exhaustion & -0.2145 & [-0.5157, 0.0094] & 68/15/112 & 0.1523 \\
-Global sharing & -0.3153 & [-0.5542, -0.1055] & 65/0/130 & 0.0469 \\
-Direct-only queries & -0.5767 & [-1.0763, -0.2501] & 42/18/135 & 0.0156 \\
-w/o broad hypotheses & -0.9754 & [-2.0778, -0.2297] & 78/0/117 & 0.0469 \\
-Compulsory delivery & -2.0839 & [-3.3107, -0.9181] & 10/0/185 & 0.0049 \\
-\multicolumn{5}{l}{\emph{Context-tree variants}} \\
-Random-split tree & -0.1296 & [-0.2186, -0.0703] & 54/15/126 & 0.0059 \\
-w/o class indicator & -0.1096 & [-0.1861, -0.0477] & 61/24/110 & 0.0391 \\
-w/o annotation count & -0.0114 & [-0.0326, 0.0037] & 60/72/63 & 1.0000 \\
-w/o confidence & -0.0012 & [-0.0116, 0.0072] & 34/112/49 & 1.0000 \\
-w/o entropy & 0.0032 & [-0.0146, 0.0181] & 55/101/39 & 1.0000 \\
-w/o margin & 0.0296 & [-0.0281, 0.0931] & 77/40/78 & 1.0000 \\
 \bottomrule
 \end{tabular}
 
-\end{table*}
+\end{table}
 
 \section{Statistical Units and Complete Main Results}
 \label{app:statistics}
@@ -341,9 +298,9 @@ For the 11 dependence clusters, write $D_g$ for the sum of paired differences in
 \begin{equation}
  \widehat d^*=\frac{\sum_{k=1}^{11}D_{g_k}}{\sum_{k=1}^{11}m_{g_k}}.
 \end{equation}
-This keeps all observations in a sampled cluster together and preserves combination weighting. The interval uses empirical 2.5th and 97.5th percentiles resamples with seed 20261025. Sign-flip inference enumerates $2^{11}$ sign assignments to the cluster sums and compares the absolute signed sum with the observed absolute sum. The null hypothesis assumes cluster-level sign symmetry. Holm correction controls each comparison family under the test assumptions: the five ablations, the seven acquisition rules under each budget mode, and the six context-tree variants.
+This keeps all observations in a sampled cluster together and preserves combination weighting. The interval uses the empirical 2.5th and 97.5th percentiles of the bootstrap resamples with seed 20261025. Sign-flip inference enumerates $2^{11}$ sign assignments to the cluster sums and compares the absolute signed sum with the observed absolute sum. The null hypothesis assumes cluster-level sign symmetry. Holm correction controls each comparison family under the test assumptions: the five ablations, the seven acquisition rules under each budget mode, and the six context-tree variants.
 
-Table~\ref{tab:seeds} retains all three economic groups separately. Tables~\ref{tab:complete1} and~\ref{tab:complete2} show every averaged main combination, including zero and negative outcomes. These values are rounded for presentation; sign classifications use unrounded values and the stated tolerance.
+Table~\ref{tab:seeds} retains all three economic groups separately. Tables~\ref{tab:complete1} and~\ref{tab:complete2} show every averaged main combination, including zero and negative outcomes. Sign classifications use the unrounded values.
 
 \begin{table}[t]
 \caption{Economic groups before averaging. }
@@ -438,9 +395,9 @@ Across all 585 runs, with the terminal state carried forward after stopping, mea
 \subsection{Delivery-Level Diagnostics}
 Let $S_0$ be the delivery set before verification and $Q_{\rm tr}$ the paid training set. Define per-task decision headroom by
 \begin{equation}
- E_0=\frac1n\left(\sum_{i\in S_0:a_i\ne y_i}L_i(y_i)+\sum_{i\notin S_0\cup Q_{\rm tr}:a_i=y_i}r_i\right).
+ E_0=\frac1n\left(\sum_{i\in S_0:a_i\ne y_i}L_i(a_i,y_i)+\sum_{i\notin S_0\cup Q_{\rm tr}:a_i=y_i}r_i\right).
 \end{equation}
-This counts wrong-delivery losses and rewards of correctly predicted but rejected tasks. New error loss concerns incorrect predictions in $S\setminus S_0$; lost correct reward concerns correct predictions in $S_0\setminus(S\cup Q)$. The favorable counterparts are recovered correct deliveries and avoided wrong deliveries. Their signed sum equals other-task gain. Task stakes are $\zeta_i=r_i+\frac1{C-1}\sum_{y\ne a_i}L_i(y)$, and dispersion is their standard deviation divided by their mean. Boundary proximity is the fraction satisfying $|\mu_i(\varnothing)|<0.1\zeta_i$. Economic settings are averaged within combinations before computing quartiles and Spearman associations. Failure-case posteriors replay the recorded paid observations; expected and realized utility sums for newly delivered or rejected sets are divided by the original pool size. Reference labels enter these diagnostics only after decisions have finished.
+This counts wrong-delivery losses and rewards of correctly predicted but rejected tasks. New error loss concerns incorrect predictions in $S\setminus S_0$; lost correct reward concerns correct predictions in $S_0\setminus(S\cup Q_+)$. The favorable counterparts are recovered correct deliveries and avoided wrong deliveries. Their signed sum equals other-task gain. Task stakes are $\zeta_i=r_i+\frac1{C-1}\sum_{y\ne a_i}L_i(a_i,y)$, and dispersion is their standard deviation divided by their mean. Boundary proximity is the fraction satisfying $|\mu_i(\varnothing)|<0.1\zeta_i$. Economic settings are averaged within combinations before computing quartiles and Spearman associations. Failure-case posteriors replay the recorded paid observations; expected and realized utility sums for newly delivered or rejected sets are divided by the original pool size. Reference labels enter these diagnostics only after decisions have finished.
 
 \begin{table*}[t]
 \caption{Five combinations with the lowest utility gains. New error loss and lost correct reward concern delivery changes on unpurchased tasks; utility and cost are per task.}
@@ -459,18 +416,6 @@ CF & GOVERN & 88.00\% & 0.2329 & 0.0059 & 0.2046 & -0.2291 \\
 
 \end{table*}
 
-\begin{figure*}[t]
-\centering\includegraphics[width=\textwidth]{synthetic.pdf}
-\caption{Synthetic validation. Left: predicted (sum of one-step gains) and realized gains on correctly specified pools, with 95\% bootstrap intervals over pools. Middle and right: gains of MAGIC, the decision-boundary heuristic, and random selection at MAGIC's query count under majority-vote and Dawid--Skene upstreams; each row varies one factor from the default.}
-\label{fig:synthetic}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering\includegraphics[width=\textwidth]{runtime.pdf}
-\caption{Mean time per acquisition step versus pool size, measured in a single process. (a)--(b)~Log--log curves for each backend on product (two classes) and Web (five classes); numbers in the legend are log--log slopes, and the shaded band between the GPU and the fastest CPU backend marks the speed-up. (c)~GPU speed-up over the fastest CPU backend at each pool size.}
-\label{fig:runtime}
-\end{figure*}
-
 \section{Supporting Experiments}
 \label{app:supporting}
 Unless stated otherwise, supporting runs read the frozen main-release inputs, verify their hashes, and use the averaging and cluster inference of Section~\ref{main-sec:protocol}. A run denotes one input (dataset, baseline, and economic seed) under one experimental condition; when several acquisition rules are compared, all of them are evaluated within the same run on that input.
@@ -485,6 +430,9 @@ Three acquisition principles cited in the main text are adapted to paid gold ver
 
 Each rule follows one deterministic trajectory until budget exhaustion; results at MAGIC's query count and under a rule's own stopping condition are exact prefixes of that trajectory, which was confirmed against separate runs on six inputs. Expected gains recomputed from the joint moments agree with MAGIC's native scores to within $7\times10^{-13}$. The study comprises 1,755 runs: the 585 main inputs in three computation groups, each evaluating one or more rule trajectories.
 
+\subsection{Joint Loss and Price Grid}
+The loss multiplier changes every wrong-label loss and the price multiplier changes all verification prices, including those of prepaid training tasks. The original monetary budget is held fixed. Each of the 20 cells has its own no-query reference at the corresponding loss and price levels. The default cell reuses the 585 main runs, leaving $19\times585=11{,}115$ additional runs. The cheaper-gold comparisons reuse overlapping settings. The main article reports the cellwise gains and the multiplicity-adjusted tests.
+
 \subsection{Cheaper and Noisy Gold Labels}
 Cheaper gold labels multiply all prices by 0.1 or 0.25 with the monetary budget fixed, and the reference is recomputed with the new training prices. Random selection (three seeds) and cost-normalized uncertainty use MAGIC's posterior with matched queries or budget exhaustion (1,170 runs: the 585 main inputs at two price multipliers, each run evaluating MAGIC and the eight comparison trajectories).
 
@@ -496,10 +444,12 @@ The noise-aware variant assumes that a returned gold label equals the reference 
 \subsection{Synthetic Pools}
 Each pool has 500 tasks, rewards drawn from $U(5,9)$, price-to-reward ratios from $U(1.1,3.0)$, wrong-label losses from a log-normal distribution with median 15 and log-scale deviation 0.8, and a budget of 30 median prices. In the correctly specified setting, labels are sampled exactly from the joint law of the default MAGIC prior for 100 pools with two classes and 100 with three. In the misspecified setting, a Dawid--Skene-type simulation assigns tasks to five latent groups whose effects $\delta_g\sim N(0,\sigma^2)$ shift each worker's accuracy logit, with default $\sigma=1$, 20\% spammers, and $R=5$ votes per task. One factor varies at a time: $\sigma\in\{0,0.5,2\}$, spammer rate $\in\{0,0.4\}$, or $R\in\{3,7\}$. Smoothed majority vote and Dawid--Skene EM provide upstream predictions from the same votes, with 20 replicates per setting (520 runs in total).
 
-Fig.~\ref{fig:synthetic} summarizes the results. MAGIC exceeds random selection in all 16 misspecified settings, with 14 bootstrap intervals over replicates excluding zero, and exceeds the decision-boundary heuristic by 0.0721--0.3772 per task. The other-task share of gross gain ranges from 8.9\% to 74.7\% and is lower for Dawid--Skene than for majority vote in seven of eight settings.
+
+
+Figure~\ref{main-fig:synthetic} in the main article reports the simulated gains. The other-task share of gross gain is lower for Dawid--Skene than for majority vote in seven of eight settings.
 
 \subsection{Task-Value Dispersion}
-For positive rewards and wrong-label losses within a pool, $\log x'=\overline{\log x}+\psi(\log x-\overline{\log x})$, followed by a rescaling that restores the arithmetic mean. Prices, predictions, and budgets are unchanged, and $\psi=1$ reproduces the main runs (1,755 new runs). The mean coefficient of variation of task stakes is 0, 0.40, and 1.53 for $\psi=0$, 0.5, and 1.5. At $\psi=0$ the gain concentrates on fewer combinations: 104 improve and 65 decline, compared with 135 and 42 at $\psi=1$.
+For positive rewards and wrong-label losses within a pool, $\log x'=\overline{\log x}+\lambda(\log x-\overline{\log x})$, followed by a rescaling that restores the arithmetic mean. Prices, predictions, and budgets are unchanged, and $\lambda=1$ reproduces the main runs (1,755 new runs). The mean coefficient of variation of task stakes is 0, 0.40, and 1.53 for $\lambda=0$, 0.5, and 1.5. At $\lambda=0$ the gain concentrates on fewer combinations: 104 improve and 65 decline, compared with 135 and 42 at $\lambda=1$.
 
 \subsection{Two-Step Lookahead}
 For the six pools with at most 300 tasks (Bird, CF, CF\_, UC, valence5, and valence7; 234 runs, 78 combinations, four clusters), the two-step value is
@@ -514,7 +464,16 @@ Random trees replace the public splitting features with random features (three s
 \subsection{Runtime}
 Timing uses one process with single-threaded BLAS and no concurrent jobs. Subpools of product (two classes) and Web (five classes) range from 250 tasks to the full pool. Fig.~\ref{fig:runtime} reports the mean time per acquisition step. Log--log slopes are 1.46, 1.88, 1.34, and 0.88 on product for the blocked, dense, exact-binary, and GPU backends, and 2.01, 1.96, and 0.58 on Web for the blocked, dense, and GPU backends. The CPU slopes do not exceed the quadratic pair interactions of exact moment computation, and the lower slopes on product reflect linear overhead at these sizes; the GPU slopes reflect incomplete device utilization at these sizes rather than a lower complexity. The dense CPU backend exceeds memory on the full product pool, where the blocked backend peaks at 0.5~GB and the GPU uses a 9.4~GB memory pool. On the full Web pool, a step takes 1.02~s on the blocked CPU backend and 0.031~s on the GPU.  At the largest pools, the GPU backend is 3.9 times faster than the fastest CPU backend on product and 25.8 times faster on Web (Fig.~\ref{fig:runtime}c).
 
+\begin{figure*}[t]
+\centering\includegraphics[width=\textwidth]{runtime.pdf}
+\caption{Mean time per acquisition step versus pool size, measured in a single process. (a)--(b)~Log--log curves for each backend on product (two classes) and Web (five classes); numbers in the legend are log--log slopes, and the shaded band between the GPU and the fastest CPU backend marks the speed-up. (c)~GPU speed-up over the fastest CPU backend at each pool size.}
+\label{fig:runtime}
+\end{figure*}
+
 \subsection{Rank-Based Cross-Check}
 Treating the 195 combinations as independent, Wilcoxon signed-rank tests with Holm correction give $p\le2.7\times10^{-5}$ for the main gain and all five ablations, each in the direction of the cluster analysis. Budget exhaustion is significant under this test but not under the cluster test ($p=0.1523$), which remains the primary analysis.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
 
 \end{document}
